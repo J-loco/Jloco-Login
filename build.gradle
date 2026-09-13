@@ -3,10 +3,17 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 group 'org.starloco.locos'
-// Get version from git tag, fallback to git commit hash
-version 'git rev-parse --abbrev-ref HEAD'.execute().getText().trim()
+// Version from the git branch or commit; "dev" when git is unavailable (e.g. Docker build).
+def gitVersion = { String... args ->
+    try {
+        return ['git', *args].execute().getText().trim()
+    } catch (IOException ignored) {
+        return ''
+    }
+}
+version gitVersion('rev-parse', '--abbrev-ref', 'HEAD') ?: 'dev'
 if (version == 'HEAD') {
-    version 'git rev-parse --short HEAD'.execute().getText().trim()
+    version gitVersion('rev-parse', '--short', 'HEAD') ?: 'dev'
 }
 
 // Make sure we compile in UTF-8 mode
@@ -22,10 +29,28 @@ sourceSets {
             srcDirs 'src'
         }
     }
+    test {
+        java {
+            srcDirs 'test'
+        }
+    }
+}
+
+// Runtime libraries are vendored in libs/; Maven Central is only used for test dependencies.
+repositories {
+    mavenCentral()
 }
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    testImplementation 'junit:junit:4.13.2'
+}
+
+test {
+    testLogging {
+        events 'passed', 'failed'
+        exceptionFormat 'full'
+    }
 }
 
 jar {

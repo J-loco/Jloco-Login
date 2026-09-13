@@ -58,26 +58,40 @@ public class AccountData extends AbstractDAO<Account> {
         return account;
     }
 
+    /**
+     * Saves the fields the login server owns. The account name, password hash and secret question
+     * are deliberately not written: they can be changed on the website while the account is loaded
+     * here, and writing the in-memory copy back would revert those changes.
+     */
     @Override
     public boolean update(Account obj) {
         try {
-            String baseQuery = "UPDATE `world_accounts` SET account = '"
-                    + obj.getName() + "', banned = '"
-                    + (obj.isBanned() ? 1 : 0) + "', bannedTime = '"
-                    + obj.getBannedTime() + "', pass = '" + obj.getPass() + "',"
-                    + " pseudo = '" + obj.getPseudo() + "', question = '"
-                    + obj.getQuestion() + "'," + " logged = '" + obj.getState()
-                    + "'," + " subscribe = '" + obj.getSubscribe() + "'"
-                    + " WHERE guid = '" + obj.getUUID() + "';";
-
-            PreparedStatement statement = getPreparedStatement(baseQuery);
+            PreparedStatement statement = getPreparedStatement(
+                    "UPDATE `world_accounts` SET banned = ?, bannedTime = ?, pseudo = ?, logged = ?, subscribe = ? WHERE guid = ?;");
+            statement.setInt(1, obj.isBanned() ? 1 : 0);
+            statement.setLong(2, obj.getBannedTime());
+            statement.setString(3, obj.getPseudo());
+            statement.setInt(4, obj.getState());
+            statement.setLong(5, obj.getSubscribe());
+            statement.setInt(6, obj.getUUID());
             execute(statement);
-
             return true;
         } catch (Exception e) {
             logger.error("SQL ERROR, trying rollback", e);
         }
         return false;
+    }
+
+    /** Replaces the password hash (upgrade to the configured scheme after a successful login). */
+    public void updatePassword(int guid, String passwordHash) {
+        try {
+            PreparedStatement statement = getPreparedStatement("UPDATE `world_accounts` SET pass = ? WHERE guid = ?;");
+            statement.setString(1, passwordHash);
+            statement.setInt(2, guid);
+            execute(statement);
+        } catch (Exception e) {
+            logger.error("Can't update the password of account " + guid, e);
+        }
     }
 
     public String exist(String nickname) {

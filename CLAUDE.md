@@ -29,8 +29,9 @@ Config: `game.config.properties` (or via `STARLOCO_CONFIG_PATH` env var)
 cd StarLoco-Login
 ./gradlew jar          # produces build/libs/login.jar
 java -jar login.jar    # or start.bat on Windows
+gradle test            # JUnit 4 tests in test/
 ```
-Config: `login.config.properties`
+Config: `login.config.properties`. Docker: `docker compose build starloco_login` (from `StarLoco-Game/`) builds `starloco/login:local` from source, running the tests during the build.
 
 Database setup: create `starloco_login` DB and run `login.sql`. Game DB: create `starloco_game` and run `game.sql`.
 
@@ -62,6 +63,7 @@ Both servers use Apache MINA with a newline+NUL text codec. Packets are 2-charac
 - **`login/`** — `LoginServer` accepts client connections; `LoginHandler`/packet classes handle authentication flow (version check → account name → password → server selection).
 - **`exchange/`** — `ExchangeServer` listens for game-server connections; `PacketHandler` routes inter-server messages (server state updates, player counts).
 - **`database/`** — single MariaDB connection (`Database`), DAOs for accounts, players, servers.
+- **Password hashes** (`login/packet/Password.java`): verifies legacy `hex(SHA512(hex(MD5(pw))))` and `pbkdf2_sha512$<iterations>$<b64 salt>$<b64 key>`; rehashes on login to the scheme set by `system.server.login.password.scheme` (`legacy` by default). The portal's `Security\PasswordHasher` implements the same formats with the same test vectors: change both together. `AccountData.update()` never writes `pass` (the site may have changed it); use `updatePassword()`.
 
 ### Lua scripts (`StarLoco-Game/scripts/`)
 - `Common.lua` — shared utilities, loaded first by every VM.

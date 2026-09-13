@@ -24,6 +24,8 @@ public class Config {
     public static String exchangeIp, version;
     public static int loginPort, exchangePort;
     public static String exchangeKey;
+    /** Hash format for passwords upgraded at login (see Password): "legacy" (default) or "pbkdf2". */
+    public static String passwordScheme = "legacy";
 
     public static void verify(String name) {
         if(new File(name).exists()) load(name);
@@ -72,7 +74,10 @@ public class Config {
             return;
         }
 
-        Console.instance.write(" > Config : config loaded with success !");
+        // Optional: absent from older config files.
+        Config.passwordScheme = "pbkdf2".equalsIgnoreCase(properties.getProperty(Params.PASSWORD_SCHEME.toString(), "legacy").trim()) ? "pbkdf2" : "legacy";
+
+        Console.instance.write(" > Config : config loaded with success ! (password scheme: " + Config.passwordScheme + ")");
     }
 
     private static void create(String name) {
@@ -116,7 +121,10 @@ public class Config {
             .append(Params.LOGIN_DB_PORT).append(" 3306\n")
             .append(Params.LOGIN_DB_USER).append(" root\n")
             .append(Params.LOGIN_DB_PASS).append(" \n")
-            .append(Params.LOGIN_DB_NAME).append(" starloco_login\n");
+            .append(Params.LOGIN_DB_NAME).append(" starloco_login\n")
+            .append("\n")
+            .append("# legacy (default) or pbkdf2: must match PASSWORD_HASH_SCHEME of StarLoco-Web\n")
+            .append(Params.PASSWORD_SCHEME).append(" legacy\n");
         
         try {
             config.write(sb.toString());
@@ -154,7 +162,8 @@ public class Config {
         LOGIN_DB_PORT("database.login.port"),
         LOGIN_DB_USER("database.login.user"),
         LOGIN_DB_PASS("database.login.pass"),
-        LOGIN_DB_NAME("database.login.name");
+        LOGIN_DB_NAME("database.login.name"),
+        PASSWORD_SCHEME("system.server.login.password.scheme");
 
         private final String params;
 

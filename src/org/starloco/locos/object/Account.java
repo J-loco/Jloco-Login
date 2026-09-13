@@ -24,7 +24,8 @@ public class Account {
         this.UUID = UUID;
         this.name = name;
         this.pass = pass;
-        this.pseudo = pseudo;
+        // NULL for accounts created on the website before a nickname is chosen.
+        this.pseudo = pseudo == null ? "" : pseudo;
         this.question = question;
         this.state = state;
         this.subscribe = subscribe;
