@@ -37,7 +37,7 @@ Database setup: create `starloco_login` DB and run `login.sql`. Game DB: create 
 ### Docker (full stack)
 ```bash
 cd StarLoco-Game
-docker compose -f compose-test.yml up
+docker compose -f docker-compose.yml up
 ```
 This spins up MariaDB, Redis, the login image, and builds+runs the game image. Config overrides live in `StarLoco-Game/config/`.
 
