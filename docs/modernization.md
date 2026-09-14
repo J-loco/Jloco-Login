@@ -111,7 +111,6 @@ cd StarLoco-Login
 ./gradlew check integrationTest
 
 cd ../StarLoco-Game
-./gradlew jar                                    # the game image copies build/libs/game.jar
 docker compose build starloco_login starloco_game
 docker compose up -d                             # starloco_game waits for a healthy starloco_login
 docker compose logs starloco_login | grep "authenticated"   # Game server 601 authenticated from ...

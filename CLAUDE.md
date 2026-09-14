@@ -18,11 +18,11 @@ StarLoco is a Dofus 1.39 private-server emulator split into four sub-projects:
 ### Game server (Java 21 + Amazon Corretto)
 ```bash
 cd StarLoco-Game
-./gradlew jar          # produces build/libs/game.jar
-./build.sh             # gradle jar + copies game.jar to project root
+./gradlew jar          # produces build/libs/game.jar (self-contained)
+./build.sh             # ./gradlew jar + copies game.jar to project root
 java -jar game.jar     # or start.bat on Windows
 ```
-Config: `game.config.properties` (or via `STARLOCO_CONFIG_PATH` env var)
+Config: `game.config.properties` (or via `STARLOCO_CONFIG_PATH` env var). Build: Gradle wrapper (committed), `build.gradle.kts`, dependency versions in `gradle/libs.versions.toml` (kept at the versions of the former vendored jars; only `luna` and `jep` stay in `libs/`, not being on Maven Central). Sources stay in `src/`, classpath resources in `src/resources/`. `docker compose build starloco_game` compiles the jar inside the image. Plan and history: `StarLoco-Game/docs/build-modernization.md`.
 
 ### Login server (Java 21)
 ```bash
@@ -56,7 +56,7 @@ Client packets are UTF-8 text frames terminated by NUL (the game server uses Apa
 - **`fight/`** — `Fight`, `Fighter` hierarchy (`PlayerFighter`, `MobFighter`, `SummonFighter`, etc.), spell system, IA (monster AI), traps, turns.
 - **`entity/`** — monsters, NPCs, mounts, pets, collectors, prisms.
 - **`area/`** — `GameMap`, `GameCase` (cells), pathfinding, sub-areas.
-- **`exchange/`** — `ExchangeClient` connects game server to login server over a private TCP channel on port 666: protocol v2 (`\n`-terminated lines via MINA's text-line codec, HMAC-SHA256 of the login server's nonce with `system.server.game.key` = `world_servers.key`). The login server runs the matching `ExchangeServer`; both sides change together. `./gradlew jar` before `docker compose build starloco_game` (the image copies `build/libs/game.jar`).
+- **`exchange/`** — `ExchangeClient` connects game server to login server over a private TCP channel on port 666: protocol v2 (`\n`-terminated lines via MINA's text-line codec, HMAC-SHA256 of the login server's nonce with `system.server.game.key` = `world_servers.key`). The login server runs the matching `ExchangeServer`; both sides change together.
 
 ### Login server internals (`StarLoco-Login/src/main/java/org/starloco/locos/`)
 - **`Main` / `LoginApplication`** — entry point and wiring (no static singletons): HikariCP pool, `GameServerRegistry`, exchange server, login server, periodic tasks.
