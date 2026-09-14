@@ -1,0 +1,11 @@
+.git
+.gradle
+.idea
+build
+logs
+docs
+patchs
+login.sql
+*.md
+!README.md
+login.config.properties

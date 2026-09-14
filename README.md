@@ -1,20 +1,47 @@
 # StarLoco - Login
-The most advanced public 1.39.8 dofus emulator written in Java 8.
 
-## Summary
-- Requirements
-- Usage
-- Contribute
-- Community
+Login server of StarLoco, a Dofus 1.39.8 emulator: account authentication, server list and server
+selection for the client, and the private exchange channel the game servers register on.
+
+Java 21, Netty 4.2, HikariCP + MariaDB Connector/J, SLF4J/Logback, no application framework.
 
 ## Requirements
-To be able to run this project, you'll need to be sure your computer has :
-- Java - JRE/JDK 8
-- MariaDB - Version 10 / MySQL - Version 8
+
+- JDK 21 (Gradle downloads one if none is installed)
+- MariaDB 10+ with the `starloco_login` database (`login.sql`)
+- Docker, only for the integration tests and the image
 
 ## Usage
-Create a database named "starloco_login", then execute "login.sql".
-Finally, run "start.bat".
+
+```bash
+./gradlew installDist                         # build/install/login
+build/install/login/bin/login --write-sample-config   # writes login.config.properties, then edit it
+build/install/login/bin/login                 # run (login.bat on Windows, or start.bat)
+```
+
+Configuration: `login.config.properties` in the working directory (or the path in `STARLOCO_LOGIN_CONFIG`).
+Every key can be overridden by an environment variable: `STARLOCO_LOGIN_` + the key in upper case with dots
+replaced by underscores, e.g. `STARLOCO_LOGIN_DATABASE_LOGIN_PASS`. Logs go to the console and `logs/login.log`
+(`LOGIN_LOG_LEVEL=DEBUG` adds packet traces; passwords, tokens and login keys are never logged).
+
+Console commands (standard input): `HELP`, `SERVERS`, `SESSIONS`, `UPTIME`, `AUTHORIZED <ip>`,
+`MAINTAIN <account>`, `PASSWORD <password>`, `SEND <session id> <packet>`.
+
+With Docker, the full stack runs from StarLoco-Game (`docker compose up`), which builds this image.
+
+## Development
+
+```bash
+./gradlew check            # formatting (Spotless), Error Prone, unit tests
+./gradlew integrationTest  # the server as a separate process against MariaDB in Testcontainers
+./gradlew spotlessApply    # format the code
+```
+
+- The game servers must speak the same exchange protocol version (`ExchangeProtocol`, currently 2): update
+  StarLoco-Game together with this server.
+- Password hashes are shared with StarLoco-Web: `auth/PasswordHasher` and its test vectors must match
+  `src/Security/PasswordHasher.php` there.
+- Design and history of the Java 21 migration: [docs/modernization.md](docs/modernization.md).
 
 ## Contribute
 
