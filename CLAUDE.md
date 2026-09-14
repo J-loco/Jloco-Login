@@ -22,7 +22,7 @@ cd StarLoco-Game
 ./build.sh             # ./gradlew jar + copies game.jar to project root
 java -jar game.jar     # or start.bat on Windows
 ```
-Config: `game.config.properties` (or via `STARLOCO_CONFIG_PATH` env var). Build: Gradle wrapper (committed), `build.gradle.kts`, dependency versions in `gradle/libs.versions.toml` (kept at the versions of the former vendored jars; only `luna` and `jep` stay in `libs/`, not being on Maven Central). Sources stay in `src/`, classpath resources in `src/resources/`. `docker compose build starloco_game` compiles the jar inside the image. Plan and history: `StarLoco-Game/docs/build-modernization.md`.
+Config: `game.config.properties` (or via `STARLOCO_CONFIG_PATH` env var). Build: Gradle wrapper (committed), `build.gradle.kts`, dependency versions in `gradle/libs.versions.toml` (MariaDB Connector/J, HikariCP 7, MINA 2.2, slf4j 2 / logback 1.6, jjwt 0.13; only `luna` and `jep` stay in `libs/`, not being on Maven Central). `common/JavaEscapes` keeps the commons-lang 2.6 unescape behaviour `CryptManager` depends on: don't replace it with commons-text. Sources stay in `src/`, classpath resources in `src/resources/`. `docker compose build starloco_game` compiles the jar inside the image. Plan and history: `StarLoco-Game/docs/build-modernization.md`.
 
 ### Login server (Java 21)
 ```bash
