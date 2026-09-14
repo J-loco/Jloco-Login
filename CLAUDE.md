@@ -9,7 +9,7 @@ StarLoco is a Dofus 1.39 private-server emulator split into four sub-projects:
 | Sub-project | Language | Role |
 |---|---|---|
 | `StarLoco-Game` | Java 21 (Gradle) | Game server — core gameplay, fights, world state |
-| `StarLoco-Login` | Java 8 (Gradle) | Authentication server — account login, server list |
+| `StarLoco-Login` | Java 21 (Gradle, Netty) | Authentication server — account login, server list |
 | `StarLoco-Client` | Electron (JS) | Patched Dofus 1.39.8 desktop client |
 | `StarLoco-Web` | PHP | Web portal — registration, shop, ladder |
 
@@ -24,16 +24,15 @@ java -jar game.jar     # or start.bat on Windows
 ```
 Config: `game.config.properties` (or via `STARLOCO_CONFIG_PATH` env var)
 
-### Login server (Java 8)
+### Login server (Java 21)
 ```bash
 cd StarLoco-Login
-./gradlew jar          # produces build/libs/login.jar
-java -jar login.jar    # or start.bat on Windows
-gradle test            # JUnit 4 tests in test/
+./gradlew check            # Spotless (palantir-java-format), Error Prone with -Werror, unit tests
+./gradlew integrationTest  # starts the server as a separate JVM against MariaDB in Testcontainers (needs Docker)
+./gradlew installDist      # build/install/login/bin/login (start.bat on Windows)
+./gradlew spotlessApply    # format before committing
 ```
-Config: `login.config.properties`. Docker: `docker compose build starloco_login` (from `StarLoco-Game/`) builds `starloco/login:local` from source, running the tests during the build.
-
-Database setup: create `starloco_login` DB and run `login.sql`. Game DB: create `starloco_game` and run `game.sql`.
+Config: `login.config.properties` (or `STARLOCO_LOGIN_CONFIG`); every key can be overridden by `STARLOCO_LOGIN_<KEY_WITH_UNDERSCORES>`; `--write-sample-config` writes a template. Docker: `docker compose build starloco_login` (from `StarLoco-Game/`) builds `starloco/login:local` from source (runs `check`). Plan and history: `StarLoco-Login/docs/modernization.md`.
 
 ### Docker (full stack)
 ```bash
@@ -45,7 +44,7 @@ This spins up MariaDB, Redis, the login image, and builds+runs the game image. C
 ## Architecture
 
 ### Packet protocol
-Both servers use Apache MINA with a newline+NUL text codec. Packets are 2-character header strings followed by payload (e.g. `"AT"`, `"GJ"`). The Game server routes packets two ways:
+Client packets are UTF-8 text frames terminated by NUL (the game server uses Apache MINA, the login server Netty). Packets are 2-character header strings followed by payload (e.g. `"AT"`, `"GJ"`). The Game server routes packets two ways:
 1. **New-style** (`DofusMessageFactory` + `EventDispatcherFactory`): classes annotated with `@DofusMessage(header="XX")` are discovered via reflection; dispatched through `AbstractEventMessageDispatcher` subclasses annotated with `@Handler`.
 2. **Legacy** (`client.parsePacket()`): a large switch/dispatch in `GameClient`.
 
@@ -57,13 +56,15 @@ Both servers use Apache MINA with a newline+NUL text codec. Packets are 2-charac
 - **`fight/`** — `Fight`, `Fighter` hierarchy (`PlayerFighter`, `MobFighter`, `SummonFighter`, etc.), spell system, IA (monster AI), traps, turns.
 - **`entity/`** — monsters, NPCs, mounts, pets, collectors, prisms.
 - **`area/`** — `GameMap`, `GameCase` (cells), pathfinding, sub-areas.
-- **`exchange/`** — `ExchangeClient` connects game server to login server over a private TCP channel on port 666 (key-authenticated). The login server runs a matching `ExchangeServer`.
+- **`exchange/`** — `ExchangeClient` connects game server to login server over a private TCP channel on port 666: protocol v2 (`\n`-terminated lines via MINA's text-line codec, HMAC-SHA256 of the login server's nonce with `system.server.game.key` = `world_servers.key`). The login server runs the matching `ExchangeServer`; both sides change together. `./gradlew jar` before `docker compose build starloco_game` (the image copies `build/libs/game.jar`).
 
-### Login server internals (`StarLoco-Login/src/org/starloco/locos/`)
-- **`login/`** — `LoginServer` accepts client connections; `LoginHandler`/packet classes handle authentication flow (version check → account name → password → server selection).
-- **`exchange/`** — `ExchangeServer` listens for game-server connections; `PacketHandler` routes inter-server messages (server state updates, player counts).
-- **`database/`** — single MariaDB connection (`Database`), DAOs for accounts, players, servers.
-- **Password hashes** (`login/packet/Password.java`): verifies legacy `hex(SHA512(hex(MD5(pw))))` and `pbkdf2_sha512$<iterations>$<b64 salt>$<b64 key>`; rehashes on login to the scheme set by `system.server.login.password.scheme` (`legacy` by default). The portal's `Security\PasswordHasher` implements the same formats with the same test vectors: change both together. `AccountData.update()` never writes `pass` (the site may have changed it); use `updatePassword()`.
+### Login server internals (`StarLoco-Login/src/main/java/org/starloco/locos/`)
+- **`Main` / `LoginApplication`** — entry point and wiring (no static singletons): HikariCP pool, `GameServerRegistry`, exchange server, login server, periodic tasks.
+- **`login/`** — Netty `LoginServer` → `LoginChannelHandler` (rate limit per IP, idle timeout, `HC` key) → `PacketDispatcher`, which switches on the sealed `LoginState` (`WaitingVersion` → `WaitingAccount` → `WaitingPassword` → `InMenu`, plus `WaitingNickname` / `WaitingSwitchToken`) and calls the classes in `login/step/`. Packets of one connection run in order on its `SerialExecutor` (virtual threads), so blocking JDBC never runs on a Netty event loop. Close with `LoginSession.sendAndClose()` so error packets (`AlEf`…) are flushed first.
+- **`exchange/`** — game servers on port 666, protocol v2 documented in `ExchangeProtocol`: `\n`-terminated lines, HMAC-SHA256 challenge-response on `world_servers.key` (the key never travels). Changing the protocol means changing StarLoco-Game's `exchange/` package in the same revision.
+- **`account/`, `database/`** — records + repositories over the `Jdbc` helper (prepared statements only). Write only the columns the login server owns: the website can change the password hash, name or question while an account is loaded.
+- **`auth/`** — `PasswordHasher` verifies legacy `hex(SHA512(hex(MD5(pw))))` and `pbkdf2_sha512$<iterations>$<b64 salt>$<b64 key>` and rehashes on login to `system.server.login.password.scheme`; StarLoco-Web's `Security\PasswordHasher` implements the same formats with the same test vectors: change both together. `PasswordCipher` decodes the client's `#1` password (reversible with the `HC` key: never log either). `CharacterSwitchToken` verifies the game server's JWS for `#S`.
+- **Tests** — unit tests next to the code; `it/` black-box tests (`LoginFlowIT`, `ExchangeIT`) describe the wire contracts the client and game server rely on.
 
 ### Lua scripts (`StarLoco-Game/scripts/`)
 - `Common.lua` — shared utilities, loaded first by every VM.

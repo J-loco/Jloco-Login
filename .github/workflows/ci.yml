@@ -7,21 +7,52 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    name: Tests and jar (Java 8)
+  check:
+    name: Format, static analysis, unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '8'
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: '8.10.2'
-      - run: gradle --no-daemon test jar
+      - run: sh ./gradlew check installDist
       - uses: actions/upload-artifact@v7
         with:
-          name: login.jar
-          path: build/libs/login.jar
+          name: login-distribution
+          path: build/install/login
+
+  integration:
+    name: Integration tests (Testcontainers MariaDB)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - run: sh ./gradlew integrationTest
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: integration-test-reports
+          path: build/reports/tests/integrationTest
+
+  image:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          tags: starloco/login:ci

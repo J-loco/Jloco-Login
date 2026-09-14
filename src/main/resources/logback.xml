@@ -1,0 +1,34 @@
+<configuration>
+    <!-- LOGIN_LOG_LEVEL (env or system property): level of the org.starloco loggers, INFO by default.
+         Packet traces are on logger org.starloco.locos.login.packets at DEBUG; passwords, switch tokens
+         and login keys are never written. -->
+    <variable name="LOG_LEVEL" value="${LOGIN_LOG_LEVEL:-INFO}"/>
+    <variable name="LOG_DIR" value="${LOGIN_LOG_DIR:-logs}"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %-24.24logger{0} %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/login.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/login.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="org.starloco" level="${LOG_LEVEL}"/>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+    <logger name="io.netty" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>
