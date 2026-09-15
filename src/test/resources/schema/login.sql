@@ -1,5 +1,5 @@
--- Tables of starloco_login used by the login server, dumped (structure only) from a database initialised
--- by StarLoco-Game/db-init. Refresh it when those tables change.
+-- Tables of jloco_login used by the login server, dumped (structure only) from a database initialised
+-- by JLoco-Game/db-init. Refresh it when those tables change.
 
 CREATE TABLE `world_accounts` (
   `guid` int(11) NOT NULL AUTO_INCREMENT,

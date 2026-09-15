@@ -36,7 +36,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v6
         with:
-          images: starloco/login
+          images: jloco/login
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

@@ -1,7 +1,7 @@
-# StarLoco-Login: Java 21 modernization
+# JLoco-Login: Java 21 modernization
 
 Status: done (2026-09-14). The login server was rewritten on Java 21 + Netty. It is wire-compatible with the
-Dofus 1.39 client and speaks exchange protocol v2 with StarLoco-Game.
+Dofus 1.39 client and speaks exchange protocol v2 with JLoco-Game.
 
 ## Why
 
@@ -12,12 +12,12 @@ The login server (~3,000 lines) was a Java 8 project:
   unknown `VPN_Detection.jar`).
 - **Code:** static singletons, and string-concatenated SQL behind one global lock.
 
-StarLoco-Game already ran on Java 21.
+JLoco-Game already ran on Java 21.
 
 Decisions:
 - **Netty 4.2** instead of MINA.
 - **No application framework:** focused libraries, wired by hand in `LoginApplication`.
-- **Fix the exchange protocol on both sides:** StarLoco-Game's `exchange/` package changed too.
+- **Fix the exchange protocol on both sides:** JLoco-Game's `exchange/` package changed too.
 
 ## Defects found and fixed
 
@@ -36,15 +36,15 @@ Decisions:
 | L11 | `kick()` threw an NPE when no account was loaded (bad version, unknown account): the socket stayed open | `LoginSession.close()` doesn't depend on the account |
 | L12 | `close(true)` right after `AlEf`/`AlEb` could drop the error packet: the client saw a plain disconnect | Close only after the pending writes are flushed (`sendAndClose`) |
 | L13 | A connection that only typed an account name could kick that account's live session, and reset its `logged` flag on disconnect | The session claims the account only after the password or switch token is verified. The flag is reset only for authenticated sessions that were not handed to a game server. |
-| G1 | StarLoco-Game's `.all` chat displayed `system.server.game.key` (the exchange secret) as the server label | `CommandPlayer` shows the server name |
+| G1 | JLoco-Game's `.all` chat displayed `system.server.game.key` (the exchange secret) as the server label | `CommandPlayer` shows the server name |
 
 ## What it looks like now
 
 ```
-src/main/java/org/starloco/locos/
+src/main/java/org/jloco/locos/
   Main, LoginApplication       entry point (--write-sample-config), wiring and lifecycle
-  config/   LoginConfig (records), ConfigLoader: same keys as before + STARLOCO_LOGIN_* env overrides, all errors listed at once
-  auth/     PasswordHasher (legacy + pbkdf2, vectors shared with StarLoco-Web), PasswordCipher (#1), LoginKey, CharacterSwitchToken (jjwt 0.13)
+  config/   LoginConfig (records), ConfigLoader: same keys as before + JLOCO_LOGIN_* env overrides, all errors listed at once
+  auth/     PasswordHasher (legacy + pbkdf2, vectors shared with JLoco-Web), PasswordCipher (#1), LoginKey, CharacterSwitchToken (jjwt 0.13)
   database/ DataSources (HikariCP), Jdbc
   account/  Account, Player (records), AccountRepository, PlayerRepository, BanRepository
   exchange/ ExchangeServer, ExchangeChannelHandler, ExchangeProtocol (v2), GameServerRegistry, WorldServer, WorldServerRepository
@@ -107,13 +107,13 @@ Differences from the original plan:
 ## Running and verifying
 
 ```bash
-cd StarLoco-Login
+cd JLoco-Login
 ./gradlew check integrationTest
 
-cd ../StarLoco-Game
-docker compose build starloco_login starloco_game
-docker compose up -d                             # starloco_game waits for a healthy starloco_login
-docker compose logs starloco_login | grep "authenticated"   # Game server 601 authenticated from ...
+cd ../JLoco-Game
+docker compose build jloco_login jloco_game
+docker compose up -d                             # jloco_game waits for a healthy jloco_login
+docker compose logs jloco_login | grep "authenticated"   # Game server 601 authenticated from ...
 docker stats --no-stream                         # login container idle near 0% CPU
 ```
 

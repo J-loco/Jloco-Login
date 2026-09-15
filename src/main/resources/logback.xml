@@ -1,6 +1,6 @@
 <configuration>
-    <!-- LOGIN_LOG_LEVEL (env or system property): level of the org.starloco loggers, INFO by default.
-         Packet traces are on logger org.starloco.locos.login.packets at DEBUG; passwords, switch tokens
+    <!-- LOGIN_LOG_LEVEL (env or system property): level of the org.jloco loggers, INFO by default.
+         Packet traces are on logger org.jloco.locos.login.packets at DEBUG; passwords, switch tokens
          and login keys are never written. -->
     <variable name="LOG_LEVEL" value="${LOGIN_LOG_LEVEL:-INFO}"/>
     <variable name="LOG_DIR" value="${LOGIN_LOG_DIR:-logs}"/>
@@ -23,7 +23,7 @@
         </encoder>
     </appender>
 
-    <logger name="org.starloco" level="${LOG_LEVEL}"/>
+    <logger name="org.jloco" level="${LOG_LEVEL}"/>
     <logger name="com.zaxxer.hikari" level="WARN"/>
     <logger name="io.netty" level="WARN"/>
 

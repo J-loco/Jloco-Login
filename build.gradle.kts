@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.errorprone)
 }
 
-group = "org.starloco.locos"
+group = "org.jloco.locos"
 // Version from git ("dev" without git, e.g. in the Docker build).
 version = runCatching {
     providers.exec {
@@ -51,7 +51,7 @@ dependencies {
 }
 
 application {
-    mainClass = "org.starloco.locos.Main"
+    mainClass = "org.jloco.locos.Main"
     applicationName = "login"
 }
 

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# StarLoco-Login image, built from source: `check` (formatting, Error Prone, unit tests) then the
+# JLoco-Login image, built from source: `check` (formatting, Error Prone, unit tests) then the
 # application distribution, on a JRE-only runtime running as a non-root user.
 #
 # The integration tests need Docker (Testcontainers) and run in CI instead: ./gradlew integrationTest
